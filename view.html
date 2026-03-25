@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>勤務実績確認ポータル</title>
+  <link rel="apple-touch-icon" href="https://github.com/jwsg1686yt91615-dot/muji.picking/blob/main/Gemini_Generated_Image_m5cro6m5cro6m5cr.png?raw=true">
+  <link rel="icon" type="image/png" href="https://github.com/jwsg1686yt91615-dot/muji.picking/blob/main/Gemini_Generated_Image_m5cro6m5cro6m5cr.png?raw=true">
+  <style>
+    :root { --bg-color: #0d0d0d; --card-bg: #1a1a1a; --accent-enji: #7f0019; --neon-cyan: #00ffcc; --text-color: #f0f0f0; }
+    body { background-color: var(--bg-color); color: var(--text-color); font-family: sans-serif; padding: 20px; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 400px; margin-top: 40px; }
+    .card { background: var(--card-bg); padding: 30px; border-radius: 20px; border: 1px solid var(--accent-enji); text-align: center; box-shadow: 0 0 20px rgba(127, 0, 25, 0.3); }
+    .app-logo { width: 120px; margin-bottom: 25px; filter: drop-shadow(0 0 5px var(--accent-enji)); }
+    select, input { width: 100%; padding: 15px; background: #222; color: #fff; border: 1px solid #444; border-radius: 10px; margin-bottom: 20px; box-sizing: border-box; font-size: 16px; }
+    .btn { width: 100%; padding: 18px; background: var(--neon-cyan); color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; }
+    .total-box { margin: 20px 0; padding: 20px; background: #222; border-radius: 10px; border-left: 5px solid var(--accent-enji); }
+    .history-table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 14px; }
+    .history-table td { padding: 12px 5px; border-bottom: 1px solid #222; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card" id="loginSection">
+      <img src="https://github.com/jwsg1686yt91615-dot/muji.picking/blob/main/Gemini_Generated_Image_m5cro6m5cro6m5cr.png?raw=true" class="app-logo">
+      <h2 style="color:var(--neon-cyan)">STAFF LOGIN</h2>
+      <select id="nameList"><option value="">名前を選択</option></select>
+      <input type="password" id="pinInput" placeholder="4桁の暗証番号" inputmode="numeric">
+      <button class="btn" onclick="login()">実績を確認</button>
+    </div>
+    <div id="displayArea" style="display:none; width:100%;">
+      <div class="card">
+        <h3 id="userName" style="color:var(--neon-cyan)"></h3>
+        <div class="total-box"><div style="font-size:12px; color:#888;">累計支給額 (概算)</div><div style="font-size:28px; color:#ff0033; font-weight:bold" id="totalPay">¥0</div></div>
+        <table class="history-table"><thead><tr style="color:#888"><th>日付</th><th>時間</th><th>金額</th></tr></thead><tbody id="historyBody"></tbody></table>
+        <button class="btn" onclick="location.reload()" style="background:#333; color:#fff; margin-top:20px;">ログアウト</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const GAS_URL = "https://script.google.com/macros/s/XXXXX/exec";
+
+    async function callGas(params) {
+      const query = new URLSearchParams(params).toString();
+      const res = await fetch(`${GAS_URL}?${query}`);
+      return await res.json();
+    }
+
+    window.onload = async () => {
+      const list = await callGas({ action: "getNameList" });
+      const select = document.getElementById('nameList');
+      list.forEach(name => {
+        let opt = document.createElement('option');
+        opt.value = opt.textContent = name;
+        select.appendChild(opt);
+      });
+    };
+
+    async function login() {
+      const name = document.getElementById('nameList').value;
+      const pin = document.getElementById('pinInput').value;
+      if(!name || !pin) return alert("入力してください");
+      
+      const data = await callGas({ action: "getStaffHistorySecure", name: name, pin: pin });
+      if (data.error) return alert(data.error);
+
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('displayArea').style.display = 'block';
+      document.getElementById('userName').textContent = name + " 様";
+      document.getElementById('totalPay').textContent = "¥" + data.total;
+      const body = document.getElementById('historyBody'); body.innerHTML = '';
+      data.history.forEach(item => { body.innerHTML += `<tr><td>${item.date}</td><td>${item.hours}h</td><td>¥${item.pay}</td></tr>`; });
+    }
+  </script>
+</body>
+</html>
