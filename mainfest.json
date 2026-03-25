@@ -1,0 +1,15 @@
+{
+  "name": "無印ピッキング点呼",
+  "short_name": "無印点呼",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#7f0019",
+  "icons": [
+    {
+      "src": "https://github.com/jwsg1686yt91615-dot/muji.picking/blob/main/Gemini_Generated_Image_m5cro6m5cro6m5cr.png?raw=true",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
