@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>無印ピッキング点呼</title>
+  
+  <link rel="apple-touch-icon" href="https://github.com/jwsg1686yt91615-dot/muji.picking/blob/main/Gemini_Generated_Image_m5cro6m5cro6m5cr.png?raw=true">
+  <link rel="icon" type="image/png" href="https://github.com/jwsg1686yt91615-dot/muji.picking/blob/main/Gemini_Generated_Image_m5cro6m5cro6m5cr.png?raw=true">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d0d0d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="無印点呼">
+
+  <style>
+    :root { --bg-color: #0d0d0d; --card-bg: #161616; --accent-enji: #7f0019; --neon-red: #ff0033; --neon-cyan: #00ffcc; --text-color: #f0f0f0; }
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-color); color: var(--text-color); font-family: 'Segoe UI', sans-serif; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .container { width: 100%; max-width: 600px; text-align: center; }
+    .card { background: var(--card-bg); padding: 50px; border-radius: 30px; box-shadow: 0 0 50px rgba(127, 0, 25, 0.3); border: 1px solid var(--accent-enji); }
+    .app-logo { width: 150px; height: auto; margin-bottom: 20px; filter: drop-shadow(0 0 10px var(--accent-enji)); }
+    #clock { font-size: 64px; font-family: 'Consolas', monospace; margin-bottom: 35px; color: var(--neon-red); text-shadow: 0 0 15px var(--neon-red); }
+    .input-group { display: flex; gap: 15px; margin-bottom: 25px; }
+    select { flex: 1; padding: 18px; background: #222; color: #fff; border: 1px solid #444; border-radius: 12px; font-size: 18px; outline: none; cursor: pointer; }
+    .main-btn { width: 100%; padding: 20px; background: var(--accent-enji); color: white; border: none; border-radius: 12px; font-size: 22px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .main-btn:hover { filter: brightness(1.3); box-shadow: 0 0 20px var(--neon-red); }
+    .sub-controls { display: flex; justify-content: center; gap: 15px; margin-top: 30px; opacity: 0.5; transition: 0.3s; }
+    .sub-btn { background: none; border: 1px solid #444; color: #888; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); backdrop-filter: blur(15px); justify-content: center; align-items: center; z-index: 1000; }
+    .overlay-content { background: #111; padding: 40px; border-radius: 30px; border: 2px solid var(--accent-enji); width: 450px; }
+    .result-item { margin: 15px 0; font-size: 16px; display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 10px; }
+    .val { color: var(--neon-red); font-weight: bold; font-family: monospace; font-size: 22px; }
+    .history-table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 14px; }
+    .history-table th { color: #666; text-align: left; padding: 5px; border-bottom: 1px solid #444; }
+    .history-table td { padding: 10px 5px; border-bottom: 1px solid #222; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <img src="https://github.com/jwsg1686yt91615-dot/muji.picking/blob/main/Gemini_Generated_Image_m5cro6m5cro6m5cr.png?raw=true" alt="Logo" class="app-logo">
+      <div id="clock">00:00:00</div>
+      <div class="input-group">
+        <select id="nameList"><option>LOADING...</option></select>
+        <select id="type">
+          <option value="出勤">ENTRY / 出勤</option>
+          <option value="退勤">EXIT / 退勤</option>
+        </select>
+      </div>
+      <button id="submitBtn" class="main-btn" onclick="submitPunch()">点呼を完了する</button>
+      <div class="sub-controls">
+        <button class="sub-btn" onclick="loadNames()">SYNC / 更新</button>
+        <button class="sub-btn" onclick="showHistory()">HISTORY / 実績</button>
+        <button class="sub-btn" onclick="generatePDF()">ADMIN: PDF生成</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="punchOverlay" class="overlay">
+    <div class="overlay-content">
+      <h2 id="resStatus" style="text-align:center;">ACCEPTED</h2>
+      <div class="result-item">NAME <span class="val" id="resName"></span></div>
+      <div class="result-item">TIME <span class="val" id="resTime"></span></div>
+      <div id="exitOnlySection">
+        <div class="result-item">WORK <span class="val"><span id="resHours"></span> h</span></div>
+        <div class="result-item">DAILY <span class="val">¥<span id="resPay"></span></span></div>
+      </div>
+      <button onclick="closeOverlay('punchOverlay')" style="width:100%; padding:15px; background:#333; color:#fff; border:none; border-radius:10px; margin-top:20px; cursor:pointer;">閉じる</button>
+    </div>
+  </div>
+
+  <div id="historyOverlay" class="overlay">
+    <div class="overlay-content">
+      <h2 style="text-align:center; color:var(--neon-cyan);">STAFF HISTORY</h2>
+      <div id="historyName" style="text-align:center; margin-bottom:10px;"></div>
+      <table class="history-table"><thead><tr><th>DATE</th><th>HOURS</th><th>PAY</th></tr></thead><tbody id="historyBody"></tbody></table>
+      <div style="margin-top:20px; text-align:right;">TOTAL: <span id="historyTotal" style="color:var(--neon-red); font-weight:bold; font-size:20px;"></span></div>
+      <button onclick="closeOverlay('historyOverlay')" style="width:100%; padding:15px; background:#333; color:#fff; border:none; border-radius:10px; margin-top:20px; cursor:pointer;">戻る</button>
+    </div>
+  </div>
+
+  <script>
+    // ★重要: GASのウェブアプリURLをここに貼り付け
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzH_JS9UYAM5c-kdRUb561GzifG6G_KE1VIh3seGI3L0IfwCrFotBwQYASPFQBJg80QwA/exec";
+
+    function updateClock() { document.getElementById('clock').textContent = new Date().toLocaleTimeString('ja-JP', { hour12: false }); }
+    setInterval(updateClock, 1000); updateClock();
+
+    async function callGas(params) {
+      const query = new URLSearchParams(params).toString();
+      try {
+        const response = await fetch(`${GAS_URL}?${query}`);
+        return await response.json();
+      } catch (e) {
+        alert("通信エラーが発生しました。");
+        return { error: true };
+      }
+    }
+
+    async function loadNames() {
+      const list = await callGas({ action: "getNameList" });
+      const select = document.getElementById('nameList');
+      select.innerHTML = '';
+      list.forEach(name => {
+        let opt = document.createElement('option');
+        opt.value = opt.textContent = name;
+        select.appendChild(opt);
+      });
+    }
+    window.onload = loadNames;
+
+    async function showHistory() {
+      const name = document.getElementById('nameList').value;
+      const data = await callGas({ action: "getStaffHistory", name: name });
+      document.getElementById('historyName').textContent = name;
+      const body = document.getElementById('historyBody'); body.innerHTML = '';
+      data.history.forEach(item => { body.innerHTML += `<tr><td>${item.date}</td><td>${item.hours}h</td><td>¥${item.pay}</td></tr>`; });
+      document.getElementById('historyTotal').textContent = "¥" + data.total;
+      document.getElementById('historyOverlay').style.display = 'flex';
+    }
+
+    async function generatePDF() {
+      const targetMonth = prompt("作成年月(例: 2026/03)", "2026/03");
+      if(!targetMonth) return;
+      const btn = event.target; btn.textContent = "WAIT...";
+      const msg = await callGas({ action: "generatePDF", targetMonth: targetMonth });
+      alert(msg); btn.textContent = "ADMIN: PDF生成";
+    }
+
+    async function submitPunch() {
+      const btn = document.getElementById('submitBtn');
+      const type = document.getElementById('type').value;
+      const name = document.getElementById('nameList').value;
+      btn.disabled = true; btn.textContent = "WAIT...";
+      
+      const res = await callGas({ action: "processPunch", name: name, type: type });
+      if (res.error) { alert(res.error); btn.disabled = false; btn.textContent = "点呼を完了する"; return; }
+      
+      document.getElementById('resName').textContent = res.name;
+      document.getElementById('resTime').textContent = res.currentTime;
+      const exitSection = document.getElementById('exitOnlySection');
+      if (res.type === "出勤") {
+        exitSection.style.display = 'none'; document.getElementById('resStatus').style.color = "var(--neon-cyan)";
+      } else {
+        exitSection.style.display = 'block'; document.getElementById('resStatus').style.color = "var(--neon-red)";
+        document.getElementById('resHours').textContent = res.workHours.toFixed(2);
+        document.getElementById('resPay').textContent = res.salary.toLocaleString();
+      }
+      document.getElementById('punchOverlay').style.display = 'flex';
+      btn.disabled = false; btn.textContent = "点呼を完了する";
+    }
+
+    function closeOverlay(id) { document.getElementById(id).style.display = 'none'; }
+  </script>
+</body>
+</html>
